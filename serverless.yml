@@ -1,0 +1,79 @@
+service:
+  name: sample-api
+
+frameworkVersion: '2'
+
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  environment:
+    TEST: ${file(./config.${opt:stage, 'local'}.json):TEST1}
+
+functions:
+  first:
+    handler: first.hello
+  second:
+    handler: second.hello
+    events:
+      - httpApi:
+          method: get
+          path: /second
+  third:
+    handler: third.hello
+    events:
+      - httpApi:
+          method: get
+          path: /third
+#    environment:
+#      TEST: ${file(./config.${opt:stage, 'local'}.json):CREDS}
+    layers:
+#      - { Ref: LayerLambdaLayer }
+      - arn:aws:lambda:us-east-1:562141814296:layer:layer:1
+
+layers:
+  layer:
+    path: layer
+    name: layer
+    compatibleRuntimes:
+      - nodejs12.x
+    allowedAccounts:
+      - '*'
+
+resources:
+  Resources:
+    MyApiGW:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: MyApiGW
+
+    MyWebsocketApi:
+      Type: AWS::ApiGatewayV2::Api
+      Properties:
+        Name: MyWebsocketApi
+        ProtocolType: WEBSOCKET
+        RouteSelectionExpression: '$request.body.action'
+
+  Outputs:
+    apiGatewayRestApiId:
+      Value:
+        Ref: MyApiGW
+      Export:
+        Name: MyApiGateway-restApiId
+
+    apiGatewayRestApiRootResourceId:
+      Value:
+        Fn::GetAtt:
+          - MyApiGW
+          - RootResourceId
+      Export:
+        Name: MyApiGateway-rootResourceId
+
+    websocketApiId:
+      Value:
+        Ref: MyWebsocketApi
+      Export:
+        Name: MyApiGateway-websocketApiId
